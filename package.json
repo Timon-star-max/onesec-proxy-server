@@ -1,0 +1,25 @@
+{
+    "name": "onesec-proxy",
+    "version": "1.0.0",
+    "author": "Opsec",
+    "description": "Proxy server for onesec user subdomains",
+    "main": "index.js",
+    "scripts": {
+        "start": "node server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "license": "ISC",
+    "dependencies": {
+        "@fastify/cors": "^9.0.1",
+        "@fastify/reply-from": "^7.0.0",
+        "@fastify/static": "^7.0.3",
+        "@supabase/supabase-js": "^2.43.0",
+        "dotenv": "^16.4.5",
+        "fastify": "^4.26.2",
+        "fastify-static": "^4.7.0",
+        "http-proxy": "^1.18.1",
+        "node-cache": "^5.1.2",
+        "node-fetch": "^2.7.0"
+    }
+}

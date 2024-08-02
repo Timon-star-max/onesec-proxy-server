@@ -1,0 +1,73 @@
+name: Node.js CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js 20.11.1
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.11.1'
+        cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
+
+    - name: Update npm to 10.2.4
+      run: npm install -g npm@10.2.4
+
+    - name: Check npm version
+      run: npm -v
+
+    - name: Install dependencies
+      run: npm install
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Use Node.js 20.11.1
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.11.1'
+
+    - name: Install PM2 globally
+      run: npm install pm2@latest -g
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Setup SSH known hosts
+      run: ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+    - name: Transfer files to server
+      run: |
+        rsync -avz --delete ./ ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }}:/var/www/onesec-proxy/
+        ssh ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "cd /var/www/onesec-proxy && echo 'Files transferred successfully'"
+
+    - name: Set Environment Variables
+      run: |
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+        echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
+        echo "MAIN_SITE='${{ secrets.MAIN_SITE }}'" >> .env
+        echo "PORT=${{ secrets.PORT }}" >> .env
+        scp .env ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }}:/var/www/onesec-proxy/.env
+
+    - name: Restart application with PM2
+      run: |
+        ssh ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} "cd /var/www/onesec-proxy && source /home/${{ secrets.SERVER_USERNAME }}/setup_env.sh && pm2 reload ecosystem.config.js"
